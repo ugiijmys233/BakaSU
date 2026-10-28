@@ -26,20 +26,22 @@ jobs:
         run: just ks ${{ github.event.inputs.kmi }} ${{ github.event.inputs.arch }}
 
       - name: Extract ko from ksud
+        env:
+          OUTNAME: lkm-${{ github.event.inputs.arch }}-${{ github.event.inputs.kmi }}_kernelsu.ko
         run: |
           python3 -c "
-raw = open('build/ksud','rb').read()
+import sys
+with open('build/ksud','rb') as f:
+    raw = f.read()
 s = raw.find(b'KSU_LKM_START')
 e = raw.find(b'KSU_LKM_END', s)
 if s < 0 or e < 0:
-    print('ERROR: KSU_LKM marker not found inside ksud')
+    print('ERROR: marker not found')
     exit(1)
-out_name = f'lkm-{github.event.inputs.arch}-{github.event.inputs.kmi}_kernelsu.ko'
-open(out_name,'wb').write(raw[s+len(b'KSU_LKM_START'):e])
-print(f'Extracted OK -> {out_name}')
-"
-        env:
-          GITHUB_CONTEXT: ${{ toJson(github.event.inputs) }}
+with open('${OUTNAME}','wb') as fo:
+    fo.write(raw[s+len(b'KSU_LKM_START'):e])
+print('ok')
+          "
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
