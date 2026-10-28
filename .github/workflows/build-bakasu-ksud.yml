@@ -27,10 +27,10 @@ jobs:
 
       - name: Extract ko from ksud
         run: |
-          python3 - <<END
+          python3 << 'END'
 import sys
 with open("build/ksud", "rb") as f:
-            raw = f.read()
+    raw = f.read()
 start = raw.find(b"KSU_LKM_START")
 end = raw.find(b"KSU_LKM_END", start)
 if start < 0 or end < 0:
