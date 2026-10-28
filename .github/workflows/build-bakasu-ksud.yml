@@ -1,0 +1,52 @@
+name: Build BakaSU ksud & Dump KO
+on:
+  workflow_dispatch:
+    inputs:
+      kmi:
+        description: KMI
+        default: android15-6.6
+        required: true
+      arch:
+        description: arch
+        default: aarch64
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install deps
+        run: |
+          sudo apt update
+          sudo apt install -y just clang llvm bc bison flex libelf-dev libssl-dev python3
+
+      - name: Build ksud
+        run: just ksud ${{ github.event.inputs.kmi }} ${{ github.event.inputs.arch }}
+
+      - name: Extract ko from ksud
+        run: |
+          python3 - <<END
+import sys
+with open("build/ksud", "rb") as f:
+            raw = f.read()
+start = raw.find(b"KSU_LKM_START")
+end = raw.find(b"KSU_LKM_END", start)
+if start < 0 or end < 0:
+    print("ERROR: LKM marker not found")
+    exit(1)
+ko_data = raw[start + len(b"KSU_LKM_START") : end]
+with open("bakasu.ko", "wb") as out:
+    out.write(ko_data)
+print("OK: extracted bakasu.ko")
+END
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bakasu-${{ github.event.inputs.kmi }}
+          path: |
+            build/ksud
+            bakasu.ko
+            build/manager.apk
